@@ -1,66 +1,215 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Pokemon Info Service
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Serwis HTTP (REST) umożliwiający pobieranie informacji o Pokemonach z PokeAPI (https://pokeapi.co/) oraz rozszerzony o dodatkowe funkcje:
 
-## About Laravel
+- zarządzanie listą zakazanych Pokemonów (/api/banned) - chronione nagłówkiem X-SUPER-SECRET-KEY,
+- pobieranie informacji o wielu Pokemonach naraz (/api/info) z pominięciem zakazanych,
+- zarządzanie własnymi (niestandardowymi) Pokemonami (/api/custom-pokemons) - CRUD,
+- cacheowanie odpowiedzi PokeAPI do najbliższej godziny 12:00 UTC+1.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Wymagania środowiskowe
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- PHP 8.2+
+- Composer
+- MySQL / PostgreSQL
+- Redis (zalecany do cache)
+- Laravel 10+
+- Opcjonalnie: Docker + Docker Compose (zalecane)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-## Learning Laravel
+## Instalacja i uruchomienie
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Opcja A - lokalnie
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Pobierz repozytorium:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+git clone <repo>
+cd repo
+```
 
-## Laravel Sponsors
+Zainstaluj zależności:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+composer install
+```
 
-### Premium Partners
+Skopiuj konfigurację:
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## Contributing
+W pliku .env ustaw:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+DB_* wartości
+CACHE_DRIVER=redis (lub database)
+SUPER_SECRET_KEY=twojsekretnyklucz
+POKEAPI_BASE_URL=https://pokeapi.co/api/v2
+```
 
-## Code of Conduct
+Uruchom migracje:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+php artisan migrate
+```
 
-## Security Vulnerabilities
+Start aplikacji:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+php artisan serve
+```
 
-## License
+Aplikacja dostępna pod: http://127.0.0.1:8000
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Opcja B - Docker
+
+```bash
+docker compose up -d
+docker exec -it laravel_app php artisan migrate
+```
+
+## Autoryzacja
+
+Wybrane endpointy wymagają nagłówka:
+
+```bash
+X-SUPER-SECRET-KEY: <wartość z .env>
+```
+
+Chronione ścieżki:
+- /api/banned/*
+- /api/custom-pokemons/*
+
+Brak lub błędna wartość → 401 Unauthorized.
+
+## Dokumentacja API (Swagger/OpenAPI)
+
+Dostępna pod adresem:
+
+```bash
+/api/docs
+```
+
+Plik OpenAPI znajduje się w:
+
+```bash
+public/docs/openapi.yaml
+```
+
+SwaggerUI jest wczytywany automatycznie i pokazuje wszystkie kontrakty API.
+
+## Endpointy API
+
+1. Rejestr Zakazanych Pokemonów (/api/banned) (chronione nagłówkiem)
+
+**GET /api/banned**
+
+Zwraca listę zakazanych Pokemonów.
+
+Response 200
+
+```bash
+[
+  {"id":1,"name":"mewtwo","created_at":"...","updated_at":"..."}
+]
+```
+
+**POST /api/banned**
+
+Body:
+
+```bash
+{"name":"mewtwo"}
+```
+
+Response 201 - created
+
+Zwraca utworzony obiekt.
+
+**DELETE /api/banned/{name}**
+
+Response 204 No Content
+
+2. Pobieranie informacji — /api/info
+
+**POST /api/info**
+
+Body:
+
+```bash
+{"names": ["pikachu", "mewtwo", "my-custom"]}
+```
+
+Response 200:
+
+```bash
+{
+  "requested": ["pikachu", "mewtwo", "my-custom"],
+  "banned": ["mewtwo"],
+  "results": [
+    {"name": "pikachu", "source": "official", "data": { ... }, "found": true},
+    {"name": "my-custom", "source": "custom", "data": { ... }}
+  ]
+}
+```
+
+3. Własne Pokemony (/api/custom-pokemons) (chronione nagłówkiem)
+
+**GET /api/custom-pokemons**
+
+Zwraca listę własnych Pokemonów.
+
+**POST /api/custom-pokemons**
+
+Body:
+```bash
+{
+  "name": "my-mon",
+  "data": {"level": 10, "abilities": ["fly"]},
+  "created_by": "admin",
+  "notes": "fan-made"
+}
+```
+
+Walidacja:
+
+- nazwa musi być unikatowa
+- nie może duplikować nazwy z PokeAPI
+
+Cache silnika PokeAPI
+
+- Cache oparty na CACHE_DRIVER (Redis / database / file)
+- Każdy Pokemon ma TTL ustawiony tak, aby wygasł:
+
+przy najbliższym 12:00 (UTC+1)
+
+Dzięki temu odświeżanie PokeAPI raz dziennie powoduje automatyczne wygasanie danych.
+
+## Cache
+
+Cache jest przechowywany w driverze wskazanym w CACHE_DRIVER (zalecany Redis). Dla oficjalnych pokemonów TTL ustawione jest tak, żeby klucz wygasł przy najbliższym 12:00 (UTC+1). Dzięki temu codzienna aktualizacja PokeAPI powoduje odświeżenie po czasie.
+
+### Testy i dalsze kroki
+
+- Dodać testy integracyjne (Feature tests) dla endpointów.  
+- Obsługa limitów rate-limit PokeAPI (retry/backoff).  
+- Ulepszyć paginację i filtrowanie /banned i /custom-pokemons.  
+
+PokeApiService - komunikacja z PokeAPI + cache
+Repositories - logika dla custom Pokemonów
+Middleware - weryfikacja X-SUPER-SECRET-KEY
+
+### Uwagi implementacyjne / wskazówki
+
+- Wszystkie nazwy pokemonów są normalizowane do lowercase (łatwiej porównywać).  
+- TTL cache jest wyliczane tak, by wygasło przy następnym 12:00 w strefie UTC+1 (ogarnięte w PokeApiService::ttlSeconds).  
+- Użyłem Http::get() z Laravel. Nie wrappery PokeAPI (zgodnie z wymaganiem).  
+- Można zmienić CACHE_DRIVER w .env na database jeśli nie chcemy Redis - wówczas wykonać php artisan cache:table i migracje.  
+- W celu lepszej produkcyjnej jakości: dodać rate-limiting, retry/backoff, logowanie odpowiedzi PokeAPI w wypadku błędów.  
+
+## Licencja
+
+Projekt udostępniony na licencji MIT.  

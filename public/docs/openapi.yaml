@@ -1,0 +1,238 @@
+openapi: 3.1.0
+info:
+  version: 1.0.0
+  title: Pokemon Info Service API
+  description: >
+    REST API do pobierania informacji o Pokemonach, zarządzania listą zakazanych Pokemonów, własnymi Pokemonami
+    oraz zarządzania zwierzakami (/pet). Wykorzystuje oficjalne PokeAPI i lokalny cache.
+
+servers:
+  - url: http://localhost:8081/api
+
+components:
+  securitySchemes:
+    SecretKey:
+      type: apiKey
+      in: header
+      name: X-SUPER-SECRET-KEY
+
+  schemas:
+    BannedPokemon:
+      type: object
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        created_at: {type: string}
+        updated_at: {type: string}
+
+    CustomPokemon:
+      type: object
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        height: {type: integer}
+        weight: {type: integer}
+        base_experience: {type: integer}
+        created_at: {type: string}
+        updated_at: {type: string}
+
+    InfoRequest:
+      type: object
+      required: [names]
+      properties:
+        names:
+          type: array
+          items:
+            type: string
+
+    InfoResponse:
+      type: object
+      properties:
+        requested:
+          type: array
+          items: {type: string}
+        banned:
+          type: array
+          items: {type: string}
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              name: {type: string}
+              source:
+                type: string
+                enum: [official, custom]
+              found: {type: boolean}
+              data: {type: object}
+
+paths:
+  # BANNED (requires X-SUPER-SECRET-KEY)
+  /banned:
+    get:
+      summary: Pobierz listę zakazanych Pokemonów
+      security:
+        - SecretKey: []
+      responses:
+        "200":
+          description: Lista zakazanych Pokemonów
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BannedPokemon"
+
+    post:
+      summary: Dodaj Pokemona do listy zakazanych
+      security:
+        - SecretKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: {type: string}
+      responses:
+        "201":
+          description: Dodano Pokemona
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BannedPokemon"
+
+  /banned/{name}:
+    delete:
+      summary: Usuń Pokemona z listy zakazanych
+      security:
+        - SecretKey: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "204":
+          description: Usunięto
+
+  # PUBLIC INFO ROUTE
+  /info:
+    post:
+      summary: Pobierz informacje o wielu Pokemonach (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InfoRequest"
+      responses:
+        "200":
+          description: Informacje o Pokemonach
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InfoResponse"
+
+  # CUSTOM POKEMONS CRUD (secured)
+  /custom:
+    get:
+      summary: Pobierz wszystkie własne Pokemony
+      security:
+        - SecretKey: []
+      responses:
+        "200":
+          description: Lista własnych Pokemonów
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomPokemon"
+
+    post:
+      summary: Dodaj własnego Pokemona
+      security:
+        - SecretKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, height, weight]
+              properties:
+                name: {type: string}
+                height: {type: integer}
+                weight: {type: integer}
+                base_experience: {type: integer}
+                created_by: {type: string}
+      responses:
+        "201":
+          description: Utworzono custom Pokemona
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomPokemon"
+
+  /custom/{id}:
+    get:
+      summary: Pobierz własnego Pokemona
+      security:
+        - SecretKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        "200":
+          description: Dane Pokemona
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomPokemon"
+
+    put:
+      summary: Edytuj własnego Pokemona
+      security:
+        - SecretKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+                height: {type: integer}
+                weight: {type: integer}
+                base_experience: {type: integer}
+                created_by: {type: string}
+      responses:
+        "200":
+          description: Zaktualizowano
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomPokemon"
+
+    delete:
+      summary: Usuń własnego Pokemona
+      security:
+        - SecretKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer}
+      responses:
+        "204":
+          description: Usunięto

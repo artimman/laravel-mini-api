@@ -70,6 +70,7 @@ paths:
   # BANNED (requires X-SUPER-SECRET-KEY)
   /banned:
     get:
+      tags: [Zakazane Pokemony]
       summary: Pobierz listę zakazanych Pokemonów
       security:
         - SecretKey: []
@@ -84,6 +85,7 @@ paths:
                   $ref: "#/components/schemas/BannedPokemon"
 
     post:
+      tags: [Zakazane Pokemony]
       summary: Dodaj Pokemona do listy zakazanych
       security:
         - SecretKey: []
@@ -106,6 +108,7 @@ paths:
 
   /banned/{name}:
     delete:
+      tags: [Zakazane Pokemony]
       summary: Usuń Pokemona z listy zakazanych
       security:
         - SecretKey: []
@@ -121,6 +124,7 @@ paths:
   # PUBLIC INFO ROUTE
   /info:
     post:
+      tags: [Informacje o Pokemonach]
       summary: Pobierz informacje o wielu Pokemonach (public)
       requestBody:
         required: true
@@ -139,6 +143,7 @@ paths:
   # CUSTOM POKEMONS CRUD (secured)
   /custom:
     get:
+      tags: [Prywatne Pokemony]
       summary: Pobierz wszystkie własne Pokemony
       security:
         - SecretKey: []
@@ -153,6 +158,7 @@ paths:
                   $ref: "#/components/schemas/CustomPokemon"
 
     post:
+      tags: [Prywatne Pokemony]
       summary: Dodaj własnego Pokemona
       security:
         - SecretKey: []
@@ -179,6 +185,7 @@ paths:
 
   /custom/{id}:
     get:
+      tags: [Prywatne Pokemony]
       summary: Pobierz własnego Pokemona
       security:
         - SecretKey: []
@@ -196,6 +203,7 @@ paths:
                 $ref: "#/components/schemas/CustomPokemon"
 
     put:
+      tags: [Prywatne Pokemony]
       summary: Edytuj własnego Pokemona
       security:
         - SecretKey: []
@@ -225,6 +233,7 @@ paths:
                 $ref: "#/components/schemas/CustomPokemon"
 
     delete:
+      tags: [Prywatne Pokemony]
       summary: Usuń własnego Pokemona
       security:
         - SecretKey: []

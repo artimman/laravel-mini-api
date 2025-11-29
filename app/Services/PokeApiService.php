@@ -19,7 +19,7 @@ class PokeApiService
         $ttl = $this->getCacheTTLToNextNoon();
 
         return cache()->remember($cacheKey, $ttl, function () use ($name) {
-            $url = "https://pokeapi.co/api/v2/pokemon/{$name}";
+            $url = config('services.pokeapi.base_url') . "/pokemon/$name";
             $response = Http::get($url);
 
             if (!$response->ok()) {

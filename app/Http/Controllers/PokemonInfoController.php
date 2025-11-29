@@ -99,7 +99,9 @@ use Illuminate\Support\Facades\Http;
 
 class PokemonInfoController extends Controller
 {
-    public function __construct(private PokemonInfoService $service) {}
+    public function __construct(private PokemonInfoService $service)
+    {
+    }
 
     public function info(Request $request)
     {

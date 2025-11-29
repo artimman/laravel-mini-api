@@ -17,25 +17,25 @@ class PokemonInfoService
     public function process(Collection $names): array
     {
         // Normalizacja nazw
-        $normalized = $names->map(fn($n) => strtolower(trim($n)));
+        $normalized = $names->map(fn ($n) => strtolower(trim($n)));
 
         // Lista zakazanych nazw z bazy
         $banned = BannedPokemon::pluck('name')
-            ->map(fn($n) => strtolower($n))
+            ->map(fn ($n) => strtolower($n))
             ->toArray();
 
         // Odfiltrowujemy zakazane
-        $requestedBanned = $normalized->filter(fn($n) => in_array($n, $banned));
-        $requestedAllowed = $normalized->reject(fn($n) => in_array($n, $banned));
+        $requestedBanned = $normalized->filter(fn ($n) => in_array($n, $banned));
+        $requestedAllowed = $normalized->reject(fn ($n) => in_array($n, $banned));
 
         // Pobieramy dane z PokeAPI (oficjalne) z CACHE
-        $official = $requestedAllowed->map(fn($name) => $this->pokeApi->getPokemon($name))
+        $official = $requestedAllowed->map(fn ($name) => $this->pokeApi->getPokemon($name))
             ->filter();
 
         // Pobieramy dane z Local DB (custom)
         $custom = CustomPokemon::whereIn('name', $requestedAllowed)
             ->get()
-            ->map(fn($p) => [
+            ->map(fn ($p) => [
                 'name' => strtolower($p->name),
                 'height' => (int)$p->height,
                 'weight' => (int)$p->weight,

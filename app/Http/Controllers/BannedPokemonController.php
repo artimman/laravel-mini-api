@@ -5,35 +5,48 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BannedPokemon;
+use App\Services\BannedPokemonService;
+use App\Helpers\ApiResponse;
+use App\Exceptions\BannedAlreadyExistsException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class BannedPokemonController extends Controller
 {
+    public function __construct(
+        private readonly BannedPokemonService $service
+    ) {
+    }
+
     public function index()
     {
-        return BannedPokemon::all();
+        return ApiResponse::success($this->service->list());
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|unique:banned_pokemon,name'
+        $validated = $request->validate([
+            'name' => ['required', 'string'],
         ]);
 
-        return BannedPokemon::create($request->only('name'));
+        try {
+            $pokemon = $this->service->create($validated['name']);
+
+            return ApiResponse::success($pokemon, 201);
+        } catch (BannedAlreadyExistsException $e) {
+            Log::warning('Attempt to re-ban Pokemon', [
+                'name' => $validated['name'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return ApiResponse::error($e->getMessage(), 409);
+        }
     }
 
-    public function destroy($name)
+    public function destroy(string $name)
     {
-        $pokemon = BannedPokemon::where('name', $name)->first();
+        $this->service->delete($name);
 
-        if (!$pokemon) {
-            return response()->json(['error' => 'Not found'], 404);
-        }
-
-        $pokemon->delete();
-
-        return response()->json(['status' => 'deleted']);
+        return ApiResponse::success(null, 204);
     }
 }

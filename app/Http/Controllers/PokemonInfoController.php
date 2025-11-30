@@ -5,6 +5,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ApiResponse;
 use App\Services\PokemonInfoService;
 use Illuminate\Http\Request;
 
@@ -24,6 +25,6 @@ class PokemonInfoController extends Controller
 
         $result = $this->service->process(collect($request->input('names')));
 
-        return response()->json($result);
+        return ApiResponse::success($result);
     }
 }

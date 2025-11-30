@@ -1,11 +1,11 @@
 openapi: 3.1.0
+
 info:
   version: 1.0.0
   title: Pokemon Info Service API
   description: >
-    REST API do pobierania informacji o Pokemonach, zarządzania listą zakazanych Pokemonów, własnymi Pokemonami
-    oraz zarządzania zwierzakami (/pet). Wykorzystuje oficjalne PokeAPI i lokalny cache.
-
+    API do pobierania informacji o Pokemonach, zarządzania zakazaną listą,
+    tworzenia własnych Pokemonów oraz pobierania informacji z oficjalnego PokeAPI.
 servers:
   - url: http://localhost:8081/api
 
@@ -16,25 +16,60 @@ components:
       in: header
       name: X-SUPER-SECRET-KEY
 
+  # --- SHARED RESPONSE
+
   schemas:
+
+    ApiResponseSuccess:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          nullable: true
+        message:
+          type: string
+          nullable: true
+      required: [status]
+
+    ApiResponseError:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+        code:
+          type: integer
+        errors:
+          type: object
+          nullable: true
+      required: [status, message]
+
+    # --- DOMAIN MODELS
+
     BannedPokemon:
       type: object
       properties:
-        id: {type: integer}
-        name: {type: string}
-        created_at: {type: string}
-        updated_at: {type: string}
+        id: { type: integer }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
 
     CustomPokemon:
       type: object
       properties:
-        id: {type: integer}
-        name: {type: string}
-        height: {type: integer}
-        weight: {type: integer}
-        base_experience: {type: integer}
-        created_at: {type: string}
-        updated_at: {type: string}
+        id: { type: integer }
+        name: { type: string }
+        height: { type: integer }
+        weight: { type: integer }
+        base_experience: { type: integer }
+        created_at: { type: string }
+        updated_at: { type: string }
+
+    # ---INFO ENDPOINT MODELS
 
     InfoRequest:
       type: object
@@ -44,30 +79,38 @@ components:
           type: array
           items:
             type: string
+          example: ["pikachu", "mewtwo"]
 
-    InfoResponse:
+    PokemonInfoData:
+      type: object
+      properties:
+        name: { type: string }
+        height: { type: integer }
+        weight: { type: integer }
+        base_experience: { type: integer }
+        source:
+          type: string
+          enum: [official, custom]
+
+    InfoResponseData:
       type: object
       properties:
         requested:
           type: array
-          items: {type: string}
+          items: { type: string }
+          example: ["pikachu", "mewtwo"]
         banned:
           type: array
-          items: {type: string}
-        results:
+          items: { type: string }
+          example: ["mewtwo"]
+        allowed:
           type: array
           items:
-            type: object
-            properties:
-              name: {type: string}
-              source:
-                type: string
-                enum: [official, custom]
-              found: {type: boolean}
-              data: {type: object}
+            $ref: "#/components/schemas/PokemonInfoData"
 
 paths:
-  # BANNED (requires X-SUPER-SECRET-KEY)
+
+  # --- BANNED POKEMON
   /banned:
     get:
       tags: [Zakazane Pokemony]
@@ -76,17 +119,15 @@ paths:
         - SecretKey: []
       responses:
         "200":
-          description: Lista zakazanych Pokemonów
+          description: Lista zakazanych
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/BannedPokemon"
+                $ref: "#/components/schemas/ApiResponseSuccess"
 
     post:
       tags: [Zakazane Pokemony]
-      summary: Dodaj Pokemona do listy zakazanych
+      summary: Dodaj Pokemona do zakazanych
       security:
         - SecretKey: []
       requestBody:
@@ -97,14 +138,20 @@ paths:
               type: object
               required: [name]
               properties:
-                name: {type: string}
+                name: { type: string }
       responses:
         "201":
-          description: Dodano Pokemona
+          description: Dodano
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BannedPokemon"
+                $ref: "#/components/schemas/ApiResponseSuccess"
+        "409":
+          description: Już istnieje
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseError"
 
   /banned/{name}:
     delete:
@@ -116,16 +163,22 @@ paths:
         - name: name
           in: path
           required: true
-          schema: {type: string}
+          schema: { type: string }
       responses:
         "204":
           description: Usunięto
+        "404":
+          description: Nie znaleziono
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseError"
 
-  # PUBLIC INFO ROUTE
+  # --- PUBLIC INFO
   /info:
     post:
       tags: [Informacje o Pokemonach]
-      summary: Pobierz informacje o wielu Pokemonach (public)
+      summary: Pobierz informacje o wielu Pokemonach
       requestBody:
         required: true
         content:
@@ -134,28 +187,31 @@ paths:
               $ref: "#/components/schemas/InfoRequest"
       responses:
         "200":
-          description: Informacje o Pokemonach
+          description: Dane o Pokemonach
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InfoResponse"
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponseSuccess"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/InfoResponseData"
 
-  # CUSTOM POKEMONS CRUD (secured)
+  # --- CUSTOM POKEMON (PRIVATE)
   /custom:
     get:
       tags: [Prywatne Pokemony]
-      summary: Pobierz wszystkie własne Pokemony
+      summary: Pobierz własne Pokemony
       security:
         - SecretKey: []
       responses:
         "200":
-          description: Lista własnych Pokemonów
+          description: Lista Pokemonów
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CustomPokemon"
+                $ref: "#/components/schemas/ApiResponseSuccess"
 
     post:
       tags: [Prywatne Pokemony]
@@ -168,20 +224,25 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, height, weight]
+              required: [name, height, weight, base_experience]
               properties:
-                name: {type: string}
-                height: {type: integer}
-                weight: {type: integer}
-                base_experience: {type: integer}
-                created_by: {type: string}
+                name: { type: string }
+                height: { type: integer }
+                weight: { type: integer }
+                base_experience: { type: integer }
       responses:
         "201":
-          description: Utworzono custom Pokemona
+          description: Utworzono
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CustomPokemon"
+                $ref: "#/components/schemas/ApiResponseSuccess"
+        "409":
+          description: Konflikt (np. istnieje w PokeAPI)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseError"
 
   /custom/{id}:
     get:
@@ -192,56 +253,55 @@ paths:
       parameters:
         - name: id
           in: path
+          schema: { type: integer }
           required: true
-          schema: {type: integer}
       responses:
         "200":
-          description: Dane Pokemona
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CustomPokemon"
+                $ref: "#/components/schemas/ApiResponseSuccess"
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseError"
 
     put:
       tags: [Prywatne Pokemony]
-      summary: Edytuj własnego Pokemona
+      summary: Zaktualizuj Pokemona
       security:
         - SecretKey: []
       parameters:
         - name: id
           in: path
+          schema: { type: integer }
           required: true
-          schema: {type: integer}
       requestBody:
-        required: true
         content:
           application/json:
             schema:
               type: object
               properties:
-                name: {type: string}
-                height: {type: integer}
-                weight: {type: integer}
-                base_experience: {type: integer}
-                created_by: {type: string}
+                height: { type: integer }
+                weight: { type: integer }
+                base_experience: { type: integer }
       responses:
         "200":
-          description: Zaktualizowano
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CustomPokemon"
+                $ref: "#/components/schemas/ApiResponseSuccess"
 
     delete:
       tags: [Prywatne Pokemony]
-      summary: Usuń własnego Pokemona
+      summary: Usuń Pokemona
       security:
         - SecretKey: []
       parameters:
         - name: id
           in: path
-          required: true
-          schema: {type: integer}
+          schema: { type: integer }
       responses:
         "204":
           description: Usunięto

@@ -9,7 +9,11 @@ namespace App\Http\Controllers;
 
 use App\Models\CustomPokemon;
 use App\Services\CustomPokemonService;
+use App\Helpers\ApiResponse;
+use App\Exceptions\ExistsInLocalException;
+use App\Exceptions\ExistsInOfficialException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CustomPokemonController extends Controller
 {
@@ -20,41 +24,57 @@ class CustomPokemonController extends Controller
 
     public function index()
     {
-        return CustomPokemon::all();
+        return ApiResponse::success(CustomPokemon::all());
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string',
-            'height' => 'required|integer|min:1',
-            'weight' => 'required|integer|min:1',
-            'base_experience' => 'required|integer|min:1'
+            'name' => ['required', 'string'],
+            'height' => ['required', 'integer', 'min:1'],
+            'weight' => ['required', 'integer', 'min:1'],
+            'base_experience' => ['required', 'integer', 'min:1'],
         ]);
 
-        return $this->service->createCustomPokemon($validated);
+        try {
+            $pokemon = $this->service->create($validated);
+            return ApiResponse::success($pokemon, 201);
+        } catch (ExistsInOfficialException|ExistsInLocalException $e) {
+            Log::warning('Attempting to add Pokemon', [
+                'name' => $validated['name'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return ApiResponse::error($e->getMessage(), 409);
+        }
     }
 
     public function show($id)
     {
-        return CustomPokemon::findOrFail($id);
+        $pokemon = CustomPokemon::findOrFail($id);
+        return ApiResponse::success($pokemon);
     }
 
     public function update(Request $request, $id)
     {
         $pokemon = CustomPokemon::findOrFail($id);
 
-        $pokemon->update($request->all());
+        $validated = $request->validate([
+            'height' => ['integer', 'min:1'],
+            'weight' => ['integer', 'min:1'],
+            'base_experience' => ['integer', 'min:1'],
+        ]);
 
-        return $pokemon;
+        $updated = $this->service->update($pokemon, $validated);
+
+        return ApiResponse::success($updated);
     }
 
     public function destroy($id)
     {
         $pokemon = CustomPokemon::findOrFail($id);
+        $this->service->delete($pokemon);
 
-        $pokemon->delete();
-
-        return response()->json(['status' => 'deleted']);
+        return ApiResponse::success(null, 204);
     }
 }

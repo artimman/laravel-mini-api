@@ -49,13 +49,13 @@ class CustomPokemonController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(int $id)
     {
         $pokemon = CustomPokemon::findOrFail($id);
         return ApiResponse::success($pokemon);
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         $pokemon = CustomPokemon::findOrFail($id);
 
@@ -70,7 +70,7 @@ class CustomPokemonController extends Controller
         return ApiResponse::success($updated);
     }
 
-    public function destroy($id)
+    public function destroy(int $id)
     {
         $pokemon = CustomPokemon::findOrFail($id);
         $this->service->delete($pokemon);
